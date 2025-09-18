@@ -1,5 +1,9 @@
-import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import { tmdb } from "../api/tmdb";
 import MovieCard from "../components/MovieCard";
 import Filters from "../components/Filters";
@@ -31,20 +35,49 @@ export default function Home() {
     return p;
   }, [filters]);
 
-  const { data: list, isLoading } = useQuery<MovieListResponse>({
-    queryKey: ["discover", discoverParams, query],
-    queryFn: () => {
-      if (query) return tmdb.search(query);
-      return tmdb.discover({ ...discoverParams, page: 1 });
-    },
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery<MovieListResponse>({
+      queryKey: ["discover", discoverParams, query],
+      queryFn: async ({ pageParam = 1 }) => {
+        if (query) {
+          return tmdb.search(query, pageParam as number);
+        }
+        return tmdb.discover({ ...discoverParams, page: pageParam });
+      },
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => {
+        if (lastPage.page < lastPage.total_pages) {
+          return lastPage.page + 1;
+        }
+        return undefined;
+      },
+      placeholderData: keepPreviousData,
+    });
+
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!hasNextPage || !loadMoreRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 1 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => {
+      if (loadMoreRef.current) observer.unobserve(loadMoreRef.current);
+    };
+  }, [hasNextPage, fetchNextPage]);
 
   return (
     <div className="grid grid-cols-12 gap-4">
       <aside className="col-span-3">
         <Filters
           genres={genres}
-          countries={countries}
+          countries={countries as any}
           filters={filters}
           setFilters={setFilters}
         />
@@ -54,10 +87,14 @@ export default function Home() {
         <h2 className="text-xl font-semibold my-4">Популярні новинки</h2>
         {isLoading && <div>Завантаження...</div>}
         <div className="grid grid-cols-3 gap-4">
-          {list?.results?.map((m) => (
-            <MovieCard key={m.id} movie={m} />
-          ))}
+          {data?.pages.map((page) =>
+            page.results.map((m) => <MovieCard key={m.id} movie={m} />)
+          )}
         </div>
+        {isFetchingNextPage && (
+          <div className="text-center py-4">Завантаження ще...</div>
+        )}
+        <div ref={loadMoreRef} className="h-10"></div>
       </section>
     </div>
   );

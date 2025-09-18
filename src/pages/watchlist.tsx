@@ -1,10 +1,8 @@
-import { useAppSelector, useAppDispatch } from "../store/hooks";
-import { remove } from "../store/watchlistSlice";
+import { useAppSelector } from "../store/hooks";
 import MovieCard from "../components/MovieCard";
 
 export default function WatchlistPage() {
   const items = useAppSelector((s) => s.watchlist.items);
-  const dispatch = useAppDispatch();
 
   return (
     <div>
@@ -16,12 +14,6 @@ export default function WatchlistPage() {
           {items.map((m) => (
             <div key={m.id}>
               <MovieCard movie={m} />
-              <button
-                onClick={() => dispatch(remove(m.id))}
-                className="mt-2 text-sm text-red-600"
-              >
-                Видалити
-              </button>
             </div>
           ))}
         </div>
