@@ -9,6 +9,7 @@ import MovieCard from "../components/MovieCard";
 import Filters from "../components/Filters";
 import Search from "../components/Search";
 import type { Genre, Country, MovieListResponse } from "../types";
+import Loader from "../components/Loader";
 
 export default function Home() {
   const [filters, setFilters] = useState<{
@@ -84,16 +85,19 @@ export default function Home() {
       </aside>
       <section className="col-span-9">
         <Search onSearch={setQuery} />
+
         <h2 className="text-xl font-semibold my-4">Популярні новинки</h2>
-        {isLoading && <div>Завантаження...</div>}
+
+        {isLoading && <Loader />}
+
         <div className="grid grid-cols-3 gap-4">
           {data?.pages.map((page) =>
             page.results.map((m) => <MovieCard key={m.id} movie={m} />)
           )}
         </div>
-        {isFetchingNextPage && (
-          <div className="text-center py-4">Завантаження ще...</div>
-        )}
+
+        {isFetchingNextPage && <Loader />}
+
         <div ref={loadMoreRef} className="h-10"></div>
       </section>
     </div>
